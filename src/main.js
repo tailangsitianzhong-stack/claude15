@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createStage } from './stage/Stage.js';
 import { createCharacter } from './character/Character.js';
 import { PlayerController } from './character/PlayerController.js';
+import { TouchControls } from './ui/TouchControls.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }) // 遠くでも、近い面どうしがちらつかないように;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -56,12 +57,13 @@ addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 const view = { yaw: 0.6, pitch: 0.28, dist: 3.2, target: new THREE.Vector3(-1, 0.6, 0), overview: false };
 let drag = null;
-renderer.domElement.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; });
-addEventListener('pointerup', () => { drag = null; });
+renderer.domElement.addEventListener('pointerdown', (e) => { if (!drag) drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
+addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.id) drag = null; });
+addEventListener('pointercancel', (e) => { if (drag && e.pointerId === drag.id) drag = null; });
 addEventListener('pointermove', (e) => {
-  if (!drag) return;
-  view.yaw -= (e.clientX - drag[0]) * 0.006; view.pitch = Math.max(-0.1, Math.min(1.45, view.pitch + (e.clientY - drag[1]) * 0.005));
-  drag = [e.clientX, e.clientY];
+  if (!drag || e.pointerId !== drag.id) return;
+  view.yaw -= (e.clientX - drag.x) * 0.006; view.pitch = Math.max(-0.1, Math.min(1.45, view.pitch + (e.clientY - drag.y) * 0.005));
+  drag.x = e.clientX; drag.y = e.clientY;
 });
 addEventListener('wheel', (e) => { view.dist = Math.max(1.2, Math.min(260, view.dist * Math.exp(e.deltaY * 0.001))); }, { passive: true });
 function toggleOverview() { view.overview = !view.overview; view.dist = view.overview ? 150 : 3.2; view.pitch = view.overview ? 0.75 : 0.28; }
@@ -71,9 +73,11 @@ window.__stage = stage;
 window.__scene = scene;
 
 const player = new PlayerController(chars[0], stage);
+const touch = new TouchControls(); // スマホ: 左のスティック（倒し切ると走る）と、右下のジャンプボタン
 window.__player = player;
 const hud = document.createElement('div');
 hud.style.cssText = 'position:fixed;left:12px;bottom:10px;color:#fff;font:13px/1.5 system-ui,sans-serif;text-shadow:0 1px 2px #0008;pointer-events:none';
+hud.id = 'hud';
 hud.textContent = 'WASD / 矢印: 移動　Shift: 走る　Space: ジャンプ（走りながらで大股ジャンプ）　ドラッグ: 視点　ホイール: 距離　V: 全景';
 document.body.appendChild(hud);
 
@@ -81,12 +85,14 @@ const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
   // 入力 → カメラから見た進行方向
-  const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  const rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  let f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
+  let rt = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+  if (f === 0 && rt === 0) { f = touch.y; rt = touch.x; } // キーを押していなければスティック（倒した量で速さが変わる）
   const fx = -Math.sin(view.yaw), fz = -Math.cos(view.yaw);
   const mx = fx * f + -fz * rt, mz = fz * f + fx * rt;
   const ml = Math.hypot(mx, mz);
-  player.update(dt, { x: ml > 0 ? mx / Math.max(1, ml) : 0, z: ml > 0 ? mz / Math.max(1, ml) : 0, run: keys.has('ShiftLeft') || keys.has('ShiftRight'), jump: keys.has('Space') });
+  player.update(dt, { x: ml > 0 ? mx / Math.max(1, ml) : 0, z: ml > 0 ? mz / Math.max(1, ml) : 0, run: keys.has('ShiftLeft') || keys.has('ShiftRight') || touch.run, jump: keys.has('Space') || touch.takeJump() });
+  hud.style.display = touch.enabled ? 'none' : '';
   // 相手と体が重ならないように押し離す
   const a = chars[0].group.position, bpos = chars[1].group.position, ddx = a.x - bpos.x, ddz = a.z - bpos.z, dd = Math.hypot(ddx, ddz);
   if (dd < 0.45 && dd > 1e-5) { a.x = bpos.x + (ddx / dd) * 0.45; a.z = bpos.z + (ddz / dd) * 0.45; }
