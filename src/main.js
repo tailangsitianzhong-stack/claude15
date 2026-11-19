@@ -13,7 +13,7 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87c5ff);
 scene.fog = new THREE.Fog(0x87c5ff, 160, 420);
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.05, 1000);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
 scene.add(new THREE.HemisphereLight(0xdff1ff, 0x5a7a3a, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 1.8);
@@ -60,6 +60,7 @@ addEventListener('keydown', (e) => {
   view.overview = !view.overview; view.dist = view.overview ? 150 : 11; view.pitch = view.overview ? 0.75 : 0.28; view.target.set(0, view.overview ? 10 : 1.2, 0); view.auto = false;
 });
 window.__view = view;
+window.__chars = chars;
 
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {

@@ -28,6 +28,8 @@ const DEFAULTS = {
 };
 
 const SKIN_GLOW = 0.3;
+// 手の色: 肌色を少し暗く（白い肌でもこぶしの輪郭が溶けないように）
+const HAND_TONE = (c) => new THREE.Color(c).multiplyScalar(0.88).getHex();
 
 function box(w, h, d, color, glow = 0) {
   const material = new THREE.MeshStandardMaterial({ color, roughness: 0.6 });
@@ -154,12 +156,16 @@ export function createCharacter(options = {}) {
     const shoulder = joint(waist, x, R.chestTop - R.shoulderDrop, 0, 'XZY');
     hang(shoulder, R.armW, R.armW, R.shoulderDrop, R.shoulderDrop - R.upperArm, o.shirt);
     const elbow = joint(shoulder, 0, R.shoulderDrop - R.upperArm, 0);
-    const w = R.armW * 0.95; // 親より少し細くして、重なった面のちらつきを防ぐ
+    // 同じ大きさの箱を重ねると、面が同じ位置に来て模様がちらつく。なので、重なる部品は必ず大きさを変える:
+    //   上腕(袖) 1.00 > 前腕 0.86（袖の中に入る）< 手 0.98（こぶしは手首より一回り太く）
+    const w = R.armW * 0.86;
     if (o.sleeves === 'long') hang(elbow, w, w, ov, -R.forearm, o.shirt);
     else hang(elbow, w, w, ov, -R.forearm, o.skin, 0, SKIN_GLOW);
     // 手首: 回転順 YXZ = 前腕のひねり(Y) → 手首の曲げ(X)
     const wrist = joint(elbow, 0, -R.forearm, 0, 'YXZ');
-    hang(wrist, w, w, 0, -R.hand, o.skin, 0, SKIN_GLOW);
+    const hw = R.armW * 0.98;
+    // 手は前腕・手首の肌より少し濃い色にして、前腕との境目と、こぶしの形をはっきりさせる
+    hang(wrist, hw, hw, 0.06, -R.hand, HAND_TONE(o.skin), 0, SKIN_GLOW * 0.6);
     return { shoulder, elbow, wrist };
   };
   const lArm = makeArm(1);

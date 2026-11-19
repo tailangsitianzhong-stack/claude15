@@ -129,14 +129,15 @@ function fight(ctx, o) {
   o.rFlat = 0.45;
 
   // 前手（左）: あごの前に出す。後手（右）: あごの横に引きつける
+  // 両手が顎の前で重なって、顔・胸と同じ白の塊に見えないよう、肘を少し開いて手の位置を離す
   o.lShoulderSwing = 1.0 + 0.04 * bounce;
-  o.lShoulderOut = 0.18;
+  o.lShoulderOut = 0.32;
   o.lShoulderTwist = 0.5;
-  o.lElbow = 1.75 - 0.05 * bounce;
-  o.rShoulderSwing = 0.5 - 0.03 * bounce;
-  o.rShoulderOut = 0.22;
-  o.rShoulderTwist = 0.75;
-  o.rElbow = 2.2 + 0.04 * bounce;
+  o.lElbow = 1.7 - 0.05 * bounce;
+  o.rShoulderSwing = 0.42 - 0.03 * bounce;
+  o.rShoulderOut = 0.5;
+  o.rShoulderTwist = 0.6;
+  o.rElbow = 2.0 + 0.04 * bounce;
 }
 
 // ============================================================
