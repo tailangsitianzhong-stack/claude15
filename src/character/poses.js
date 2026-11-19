@@ -25,6 +25,7 @@ export const FIELDS = [
   'neckPitch', 'neckYaw', 'neckRoll',
   'swordTilt', 'swordTwist', 'swordRoll',
   'daggerTilt',
+  'lWristBend', 'rWristBend',   // 手首の曲げ（+ で手が前へ曲がる）。素手のとき、力を抜いた手・握りこぶしの形に使う
   ...LIMB.map((f) => 'l' + f),
   ...LIMB.map((f) => 'r' + f),
 ];
@@ -53,19 +54,19 @@ export function copyPose(out, a) {
 }
 
 // ---- 波形の部品 ----
-const wrap = (x) => x - 2 * PI * Math.round(x / (2 * PI)); // [-π, π]
+export const wrap = (x) => x - 2 * PI * Math.round(x / (2 * PI)); // [-π, π]
 const clamp01 = (x) => min(1, max(0, x));
-const smooth = (x) => { const t = clamp01(x); return t * t * (3 - 2 * t); };
+export const smooth = (x) => { const t = clamp01(x); return t * t * (3 - 2 * t); };
 // center を頂点に、±half でゼロになるなめらかな山
-const lobe = (x, center, half) => {
+export const lobe = (x, center, half) => {
   const t = min(1, abs(wrap(x - center)) / half);
   return 0.5 + 0.5 * cos(PI * t);
 };
 // center ± half の区間で 1、端は soft の幅でなめらかに 0 へ
-const plateau = (x, center, half, soft) => 1 - smooth((abs(wrap(x - center)) - (half - soft)) / soft);
+export const plateau = (x, center, half, soft) => 1 - smooth((abs(wrap(x - center)) - (half - soft)) / soft);
 
 // 左脚は位相そのまま、右脚は半周期ずらす
-const SIDES = [['l', 0], ['r', PI]];
+export const SIDES = [['l', 0], ['r', PI]];
 
 // ============================================================
 // 立ちポーズ: 力を抜いた自然な直立。呼吸・重心のゆっくりした移動・視線の動き

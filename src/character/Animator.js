@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RIG } from './rig.js';
+import './Barehand.js'; // 素手の歩き・走り・ジャンプを POSES に登録する
 import { POSES, carrySword, carryBat, carryFang, carryArrow, carryOnom, carrySaw, makePose, resetPose, lerpPose, copyPose } from './poses.js';
 
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -49,6 +50,9 @@ export class Animator {
     this.time = Math.random() * 10; // キャラごとに呼吸のタイミングをずらす
     this.phase = 0;
     this.airU = 0;
+    this.jumpT = 0;          // ジャンプの踏み切り・着地の進み具合 0 → 1（コントローラが進める）
+    this.leadSide = 1;       // 空中・着地で前へ出す脚: +1 = 左、-1 = 右（踏み切った時の脚の位相で決まる）
+    this.landK = 0.6;        // 着地の衝撃の強さ 0〜1（落下の速さで決まる。沈み込みの深さに効く）
     this.debug = null; // { name, phase, airU, time } を入れるとその姿勢で固定（確認用）
 
     this.pose = makePose();     // 表示中の姿勢
@@ -118,14 +122,18 @@ export class Animator {
     this.bank += this.bankV * h;
     if (this.debug) {
       const d = this.debug;
-      const saved = [this.phase, this.airU, this.time, this.attackT, this.hitT];
+      const saved = [this.phase, this.airU, this.time, this.attackT, this.hitT, this.jumpT, this.runK, this.leadSide, this.landK];
       this.phase = d.phase ?? 0;
       this.airU = d.airU ?? 0;
       this.time = d.time ?? 0;
       this.attackT = d.attackT ?? 0;
       this.hitT = d.hitT ?? 0;
+      this.jumpT = d.jumpT ?? 0;
+      this.runK = d.runK ?? this.runK;
+      this.leadSide = d.leadSide ?? this.leadSide;
+      this.landK = d.landK ?? this.landK;
       this.evaluate(d.name, this.pose);
-      [this.phase, this.airU, this.time, this.attackT, this.hitT] = saved;
+      [this.phase, this.airU, this.time, this.attackT, this.hitT, this.jumpT, this.runK, this.leadSide, this.landK] = saved;
       this.apply(this.pose);
       return;
     }
@@ -155,8 +163,8 @@ export class Animator {
     // side: 左 = +1, 右 = -1
     this.applyLimbs(p, 'l', 1, j.lShoulder, j.lElbow, j.lHip, j.lKnee, j.lAnkle);
     this.applyLimbs(p, 'r', -1, j.rShoulder, j.rElbow, j.rHip, j.rKnee, j.rAnkle);
-    j.rWrist.rotation.set(p.swordTilt, p.swordTwist, p.swordRoll);
-    j.lWrist.rotation.set(p.daggerTilt, 0, 0);
+    j.rWrist.rotation.set(p.swordTilt - p.rWristBend, p.swordTwist, p.swordRoll);
+    j.lWrist.rotation.set(p.daggerTilt - p.lWristBend, 0, 0);
 
     // ---- 接地: 一番低い靴底が地面（ルートの高さ）に来るよう腰を上下させる ----
     j.hips.position.set(p.hipsX, RIG.hipY, p.hipsZ);
