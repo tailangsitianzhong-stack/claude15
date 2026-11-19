@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { STAGE_CONFIG } from './config.js';
+import { createCity } from './City.js';
 
 // 再現性のある乱数（シードが同じなら同じ壁になる）
 function mulberry32(seed) {
@@ -15,7 +16,7 @@ function mulberry32(seed) {
 
 /**
  * 格闘ゲームの土台ステージ。
- * - 草原の床（単色）
+ * - 街（道路・ビル・看板・タワー・家・公園。実寸 1 単位 ≒ 2.365m）の床
  * - 外周を囲う、石ブロックが重なり合った乱雑な壁
  * - 外側はのっぺりした海
  * 返り値の `bounds` は壁の内側（キャラが動ける範囲, XZ）。
@@ -35,14 +36,18 @@ export function createStage(options = {}) {
     new THREE.BoxGeometry(cfg.floorSize, cfg.floorThickness, cfg.floorSize),
     [
       sideMat, sideMat,
-      new THREE.MeshStandardMaterial({ color: cfg.colors.grass, roughness: 0.85 }), // 上面
+      new THREE.MeshStandardMaterial({ color: cfg.colors.asphalt, roughness: 0.9 }), // 上面（道路のアスファルト）
       sideMat, sideMat, sideMat,
     ],
   );
   floor.position.y = -cfg.floorThickness / 2; // 上面を y=0 に
   floor.receiveShadow = true;
-  floor.name = 'GrassFloor';
+  floor.name = 'CityFloor';
   group.add(floor);
+
+  // ---------- 街（道路・ビル・看板・タワー・家・公園）----------
+  const city = createCity({ rand });
+  group.add(city.group);
 
   // ---------- 石ブロックの乱雑な壁 ----------
   // 外周に沿って、大きさ・向き・傾きがバラバラな石ブロックを重ねて積む
@@ -127,6 +132,7 @@ export function createStage(options = {}) {
   const inner = half - cfg.wallThickness - 0.5 * S; // 石の張り出し分の余裕を引く
   return {
     group,
+    colliders: city.colliders, // 建物などの足跡 { minX, maxX, minZ, maxZ, height }
     update() {},
     config: cfg,
     bounds: { minX: -inner, maxX: inner, minZ: -inner, maxZ: inner, floorY: 0 },

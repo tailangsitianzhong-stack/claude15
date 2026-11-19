@@ -1,6 +1,6 @@
 // ステージの寸法設定（ワールド単位）
 export const STAGE_CONFIG = {
-  floorSize: 64,       // 床（島）の一辺（面積は初期の4倍）
+  floorSize: 128,      // 床（島）の一辺。街の実寸（約 300m 四方）に合わせて広げた
   floorThickness: 3,   // 床の厚み
   wallThickness: 8,    // 石壁の帯の太さ（外周から内側へ）
   wallHeight: 12,      // 石壁のおおよその高さ
@@ -11,6 +11,7 @@ export const STAGE_CONFIG = {
   seed: 1337,          // 石の配置・色ムラ用の乱数シード
   colors: {
     grass: 0x4fa83d,
+    asphalt: 0x3b3d42,
     dirt: 0x7a5232,
     stone: 0x8f8f8f,
     sea: 0x2e7fd0,
