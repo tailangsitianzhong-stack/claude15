@@ -22,7 +22,7 @@ const DEFAULTS = {
   hairStyle: 'short', // 'short' | 'spiky' | 'none'
   face: 'smile',      // 'smile' | 'angry'
   sleeves: 'short',   // 'short'（前腕が肌） | 'long'（手だけ肌）
-  sword: true,        // 右手に剣を持つ
+  sword: false,       // 右手に剣を持つ（claude15 では持たせない）
   great: false,       // 最初から両手剣を持つ（確認用。必殺技では途中で持ち替える）
   scale: 0.15,
 };
