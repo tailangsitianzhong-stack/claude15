@@ -22,3 +22,15 @@ Claude13 から、マップ（ステージ）とキャラクターの形だけ�
 | 南 | 百貨店 + 駐車場 | 高層・ホテル・商店 | 住宅地 |
 
 `createStage()` の返り値 `colliders` に、建物・車・噴水などの足跡 `{ minX, maxX, minZ, maxZ, height }` が入っている（将来の当たり判定用）。
+
+## 検査（`tools/`）
+
+ローカルサーバー（例: `python3 -m http.server 5199`）を立てて、Playwright で実行する。
+
+- `tools/audit-overlap.cjs` 街の全ての面を調べ、同じ向き・同じ平面で重なる面（面のちらつき）を探す
+- `tools/audit-collision.cjs` 約 8,000 地点にキャラ（半径 0.3）を置き、`stage.resolve()` で押し出した位置が物体の内側でないか、看板・窓の板が壁や柱に埋まっていないかを調べる
+
+当たり判定・地面の高さ:
+- `stage.solids` 触れる全ての物の当たり判定（`City.js` が見えている立体から自動で作る。箱は向きつき、円柱は円）
+- `stage.resolve(x, z, r)` めり込まない位置に押し出す（壁の外にも出さない）
+- `stage.groundY(x, z)` 足元の高さ（道路 0 / 歩道 0.07 / 芝 0.10 / 広場 0.14）

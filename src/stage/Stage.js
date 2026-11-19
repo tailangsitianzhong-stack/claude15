@@ -132,7 +132,59 @@ export function createStage(options = {}) {
   const inner = half - cfg.wallThickness - 0.5 * S; // 石の張り出し分の余裕を引く
   return {
     group,
-    colliders: city.colliders, // 建物などの足跡 { minX, maxX, minZ, maxZ, height }
+    colliders: city.colliders, // 建物などの足跡 { minX, maxX, minZ, maxZ, height }（大きな物だけ）
+    solids: city.solids,       // 触れる全ての物の当たり判定（箱は向きつき、円柱は円）
+    // 歩ける地面の高さ（歩道 0.07・芝 0.10・園路・広場 0.14 など）。キャラの足元の y に使う
+    groundY(x, z) {
+      let y = 0;
+      for (const p of city.patches) {
+        if (p.top <= y) continue;
+        if (p.disc) { if ((x - p.x) ** 2 + (z - p.z) ** 2 <= p.r * p.r) y = p.top; continue; }
+        const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dz = z - p.z;
+        if (Math.abs(dx * c - dz * s) <= p.hx && Math.abs(dx * s + dz * c) <= p.hz) y = p.top;
+      }
+      return y;
+    },
+    // 半径 r のキャラを (x, z) に置いたとき、建物・木・柱などにめり込まないよう押し出した位置を返す。壁（bounds）の外にも出さない
+    resolve(x, z, r = 0.3) {
+      const b = this.bounds, x0 = x, z0 = z;
+      const clamp = () => { x = Math.max(b.minX + r, Math.min(b.maxX - r, x)); z = Math.max(b.minZ + r, Math.min(b.maxZ - r, z)); };
+      // (x, z) で o にめり込む量。0 ならめり込んでいない。めり込むとき out に押し出し後の位置を入れる
+      const hit = (o, px, pz, out) => {
+        if (o.circle) {
+          const dx = px - o.x, dz = pz - o.z, d = Math.hypot(dx, dz), min = o.r + r;
+          if (d >= min - 1e-4) return false;
+          out.x = d > 1e-6 ? o.x + (dx / d) * min : o.x + min; out.z = d > 1e-6 ? o.z + (dz / d) * min : o.z; return true;
+        }
+        const c = Math.cos(o.rot), s = Math.sin(o.rot), dx = px - o.x, dz = pz - o.z;
+        const lx = dx * c - dz * s, lz = dx * s + dz * c;               // 箱の向きに合わせた座標
+        const cx = Math.max(-o.hx, Math.min(o.hx, lx)), cz = Math.max(-o.hz, Math.min(o.hz, lz));
+        let ex = lx - cx, ez = lz - cz, d = Math.hypot(ex, ez);
+        if (d >= r - 1e-4) return false;
+        if (d < 1e-6) { // 中心が箱の中: 一番近い面から出す
+          const qx = o.hx - Math.abs(lx), qz = o.hz - Math.abs(lz);
+          if (qx < qz) { ex = Math.sign(lx || 1); ez = 0; d = -qx; } else { ex = 0; ez = Math.sign(lz || 1); d = -qz; }
+        } else { ex /= d; ez /= d; }
+        const nx = lx + ex * (r - d), nz = lz + ez * (r - d);
+        out.x = o.x + nx * c + nz * s; out.z = o.z - nx * s + nz * c; return true;
+      };
+      const tmp = { x: 0, z: 0 };
+      const free = (px, pz) => px >= b.minX + r - 1e-4 && px <= b.maxX - r + 1e-4 && pz >= b.minZ + r - 1e-4 && pz <= b.maxZ - r + 1e-4 && !city.solids.some((o) => hit(o, px, pz, tmp));
+      clamp();
+      for (let it = 0; it < 8; it++) { // 押し出しを繰り返す
+        let moved = false;
+        for (const o of city.solids) if (hit(o, x, z, tmp)) { x = tmp.x; z = tmp.z; moved = true; }
+        clamp();
+        if (!moved) break;
+      }
+      if (!free(x, z)) { // 建物とガレージの境目のような凹んだ所で押し出しが収まらないとき: 元の位置から、近い順に空いている場所を探す
+        for (let rad = 0.1; rad < 8; rad += 0.1) for (let a = 0; a < 24; a++) {
+          const px = x0 + Math.cos((a / 24) * Math.PI * 2) * rad, pz = z0 + Math.sin((a / 24) * Math.PI * 2) * rad;
+          if (free(px, pz)) return { x: px, z: pz };
+        }
+      }
+      return { x, z };
+    },
     update() {},
     config: cfg,
     bounds: { minX: -inner, maxX: inner, minZ: -inner, maxZ: inner, floorY: 0 },

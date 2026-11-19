@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createStage } from './stage/Stage.js';
 import { createCharacter } from './character/Character.js';
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true }) // 遠くでも、近い面どうしがちらつかないように;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
@@ -36,7 +36,10 @@ chars[0].group.position.set(-1, 0, 0);
 chars[0].group.rotation.y = Math.PI / 2;
 chars[1].group.position.set(1, 0, 0);
 chars[1].group.rotation.y = -Math.PI / 2;
-for (const c of chars) { scene.add(c.group); c.animator.play('fight', 0); }
+for (const c of chars) {
+  scene.add(c.group); c.animator.play('fight', 0);
+  c.group.position.y = stage.groundY(c.group.position.x, c.group.position.z); // 足元を地面の高さに合わせる（広場は道路より 0.14 高い）
+}
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
@@ -61,6 +64,8 @@ addEventListener('keydown', (e) => {
 });
 window.__view = view;
 window.__chars = chars;
+window.__stage = stage;
+window.__scene = scene;
 
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {

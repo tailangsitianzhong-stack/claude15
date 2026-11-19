@@ -308,7 +308,7 @@ export function createCity({ rand }) {
       const ring = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
       for (let k = 0; k < 4; k++) {
         const [ax, az] = ring[k], [bx, bz] = ring[(k + 1) % 4];
-        beam(c(s1, y1, ax, az), c(s1, y1, bx, bz), 0.1, mat);
+        beam(c(s1, y1, ax, az), c(s1, y1, bx, bz), k % 2 ? 0.09 : 0.1, mat); // 太さを変え、角で重なる面が同じ高さにならないようにする
         beam(c(s0, y0, ax, az), c(s1, y1, bx, bz), 0.06, mat); // X 字の補強
         beam(c(s0, y0, bx, bz), c(s1, y1, ax, az), 0.06, mat);
       }
@@ -316,7 +316,7 @@ export function createCity({ rand }) {
     for (const [f, hm] of [[0.34, 5], [0.7, 4]]) { // 展望台
       const s = sp(f);
       box(g, s * 2 + 1.0, m(hm), s * 2 + 1.0, red, 0, f * Ht - m(hm) / 2, 0);
-      box(g, s * 2 + 1.4, 0.1, s * 2 + 1.4, white, 0, f * Ht + m(hm) / 2 - 0.1, 0);
+      box(g, s * 2 + 1.4, 0.1, s * 2 + 1.4, white, 0, f * Ht + m(hm) / 2 - 0.08, 0); // 上面を 0.02 高くして、赤い箱の天面と重ならないように
     }
     cyl(g, 0.05, 0.3, Ht * 0.18, white, 0, Ht * 0.82, 0, 8);
     cyl(g, 0.02, 0.05, Ht * 0.1, red, 0, Ht * 0.97, 0, 6);
@@ -343,7 +343,7 @@ export function createCity({ rand }) {
   function house(x, z, front) {
     const g = new THREE.Group();
     const w = m(11), d = m(8.5), floors = rand() < 0.65 ? 2 : 1, h = floors * m(2.9);
-    const wall = pick(WALLS), roofC = pick(ROOFS);
+    const wall = pick(WALLS), roofC = pick(ROOFS), garage = rand() < 0.5;
     box(g, w, h, d, std(wall), 0, 0, 0);
     box(g, w + 0.04, m(0.35), d + 0.04, std(0x7a7a78), 0, 0, 0, { cast: false }); // 基礎
     // 切妻屋根（棟は横方向）
@@ -358,14 +358,14 @@ export function createCity({ rand }) {
     const place = (px, py, pz, ry) => { const p = mesh(new THREE.PlaneGeometry(ww, wh), wm, px, py + wh / 2, pz, { cast: false }); p.rotation.y = ry; g.add(p); };
     for (let f = 0; f < floors; f++) {
       const py = f * m(2.9) + m(0.9);
-      for (const sx of [-0.3, 0.3]) if (!(f === 0 && sx > 0)) place(sx * w, py, d / 2 + 0.012, 0);
-      place(0, py, -d / 2 - 0.012, Math.PI);
-      place(w / 2 + 0.012, py, 0, Math.PI / 2);
-      place(-w / 2 - 0.012, py, 0, -Math.PI / 2);
+      for (const sx of [-0.3, 0.3]) if (!(f === 0 && sx > 0)) place(sx * w, py, d / 2 + 0.02, 0);
+      place(0, py, -d / 2 - 0.02, Math.PI);
+      place(w / 2 + 0.02, py, 0, Math.PI / 2);
+      if (!garage) place(-w / 2 - 0.02, py, 0, -Math.PI / 2); // ガレージを付けた側の壁には窓を付けない（埋まって見えなくなる）
     }
     box(g, m(1.0), m(2.05), 0.06, std(0x5a3b2a), w * 0.3, 0, d / 2 + 0.03, { cast: false }); // ドア 2.05m
     box(g, m(1.8), m(0.2), m(1.0), std(0x9a9a98), w * 0.3, 0, d / 2 + m(0.5)); // 玄関ポーチ
-    if (rand() < 0.5) { // ガレージ
+    if (garage) { // ガレージ
       const gw = m(3.2);
       box(g, gw, m(2.5), d * 0.9, std(wall), -w / 2 - gw / 2, 0, 0);
       box(g, gw + 0.1, 0.08, d * 0.9 + 0.1, std(roofC), -w / 2 - gw / 2, m(2.5), 0);
@@ -411,12 +411,12 @@ export function createCity({ rand }) {
     slab(x0 + SW, x1 - SW, z0 + SW, z1 - SW, std(0x4fa83d, { roughness: 1 }), 0.07, 0.03);
     const pathMat = std(0xd9cfb4, { roughness: 1 });
     slab(-1.3, 1.3, z0 + SW, z1 - SW, pathMat, 0.1, 0.02);   // 十字の園路
-    slab(x0 + SW, x1 - SW, -1.3, 1.3, pathMat, 0.1, 0.02);
+    slab(x0 + SW, x1 - SW, -1.3, 1.3, pathMat, 0.1, 0.025); // 縦の園路より 0.005 高くして、交差部分の面が同じ高さにならないようにする
     // 中央の広場（戦いの舞台）: 舗装の円と模様
     const plaza = mesh(new THREE.CylinderGeometry(7, 7, 0.04, 48), std(0xcdbfa0, { roughness: 1 }), 0, 0.12, 0, { cast: false });
     group.add(plaza);
-    group.add(mesh(new THREE.TorusGeometry(5.4, 0.12, 6, 64).rotateX(Math.PI / 2), std(0x8a7a5c), 0, 0.15, 0, { cast: false }));
-    group.add(mesh(new THREE.TorusGeometry(3.0, 0.1, 6, 64).rotateX(Math.PI / 2), std(0x8a7a5c), 0, 0.15, 0, { cast: false }));
+    group.add(mesh(new THREE.TorusGeometry(5.4, 0.12, 6, 64).rotateX(Math.PI / 2).scale(1, 0.25, 1), std(0x8a7a5c), 0, 0.14, 0, { cast: false }));
+    group.add(mesh(new THREE.TorusGeometry(3.0, 0.1, 6, 64).rotateX(Math.PI / 2).scale(1, 0.25, 1), std(0x8a7a5c), 0, 0.14, 0, { cast: false }));
     // 噴水（北西の隅）
     const fx = -8.5, fz = -8.5;
     cyl(group, m(4.5), m(4.5), m(0.7), std(0xbdb6a6), fx, 0.1, fz, 32);
@@ -429,7 +429,7 @@ export function createCity({ rand }) {
       const a = (i / 8) * Math.PI * 2 + Math.PI / 8, bx = Math.cos(a) * 8, bz = Math.sin(a) * 8;
       const bench = new THREE.Group();
       box(bench, m(1.8), m(0.08), m(0.5), std(0x8a5a2f), 0, m(0.45), 0);
-      box(bench, m(1.8), m(0.45), m(0.06), std(0x8a5a2f), 0, m(0.5), -m(0.25));
+      box(bench, m(1.7), m(0.45), m(0.06), std(0x8a5a2f), 0, m(0.5), -m(0.25));
       for (const sx of [-0.4, 0.4]) box(bench, m(0.08), m(0.45), m(0.45), std(0x333333), m(1.8) * sx, 0, 0, { cast: false });
       bench.position.set(bx, 0.1, bz); bench.rotation.y = -a + Math.PI / 2; group.add(bench);
     }
@@ -488,16 +488,16 @@ export function createCity({ rand }) {
     slab(x0 + SW, x1 - SW, z0 + SW, z1 - SW, std(0xcfcabd), 0.07, 0.02);
     skyscraper({ x: -6.5, z: 31, w: 10.5, d: 10.5, floors: 30, variant: 'glass', front: '-z', sign: ['BOOKS', '#2e7d32', '#f1f8e9'] });
     building({ x: 7, z: 30, w: 10, d: 9, floors: 14, variant: 'white', front: '-z', sign: ['HOTEL', '#7b1fa2', '#ffecb3'], blade: true, billboard: true });
-    building({ x: -8, z: 45, w: 8, d: 6, floors: 4, variant: 'brick', front: '-z', blade: true });
+    building({ x: -8.8, z: 45, w: 8, d: 6, floors: 4, variant: 'brick', front: '-z', blade: true });
     building({ x: 0, z: 45, w: 8, d: 6, floors: 3, variant: 'concrete', front: '-z', blade: true });
-    building({ x: 8, z: 45, w: 8, d: 6, floors: 5, variant: 'white', front: '-z', blade: true });
+    building({ x: 8.8, z: 45, w: 8, d: 6, floors: 5, variant: 'white', front: '-z', blade: true });
   }
   { // 西: 中層ビルの並び（東の大通りに正面）
     const [x0, x1] = BLK[0], [z0, z1] = BLK[1];
     slab(x0 + SW, x1 - SW, z0 + SW, z1 - SW, std(0xcfcabd), 0.07, 0.02);
-    building({ x: -36, z: -8.6, w: 8.2, d: 24, floors: 8, variant: 'concrete', front: '+x', blade: true, billboard: true });
-    building({ x: -36, z: 0.4, w: 9, d: 24, floors: 10, variant: 'brick', front: '+x', blade: true });
-    building({ x: -36, z: 9.4, w: 8.2, d: 24, floors: 6, variant: 'white', front: '+x', blade: true });
+    building({ x: -36, z: -9.1, w: 8.2, d: 24, floors: 8, variant: 'concrete', front: '+x', blade: true, billboard: true });
+    building({ x: -36, z: 0.2, w: 9, d: 24, floors: 10, variant: 'brick', front: '+x', blade: true });
+    building({ x: -36, z: 9.5, w: 8.2, d: 24, floors: 6, variant: 'white', front: '+x', blade: true });
   }
   { // 北東: 鉄塔の広場
     const [x0, x1] = BLK[2], [z0, z1] = BLK[0];
@@ -586,7 +586,7 @@ export function createCity({ rand }) {
     box(g, m(3.4), m(1.3), 0.03, new THREE.MeshStandardMaterial({ color: 0xaad4f5, transparent: true, opacity: 0.45 }), 0, m(0.9), -m(0.55), { cast: false });
     box(g, m(1.6), m(0.1), m(0.4), std(0x777), 0, m(0.45), -m(0.3), { cast: false });
     cyl(g, 0.025, 0.025, m(3), poleMat, m(2.4), 0, 0, 6, { receive: false });
-    g.add(mesh(new THREE.PlaneGeometry(m(0.8), m(0.8)), new THREE.MeshBasicMaterial({ map: signTex('BUS', { bg: '#1565c0', fg: '#fff', w: 128, h: 128 }), side: THREE.DoubleSide }), m(2.4), m(2.9), 0, { cast: false, receive: false }));
+    g.add(mesh(new THREE.PlaneGeometry(m(0.8), m(0.8)), new THREE.MeshBasicMaterial({ map: signTex('BUS', { bg: '#1565c0', fg: '#fff', w: 128, h: 128 }), side: THREE.DoubleSide }), m(2.4), m(2.9), 0.04, { cast: false, receive: false })); // 板は柱の手前に出す（柱に埋めない）
     g.position.set(x, 0.07, z); g.rotation.y = rot; group.add(g);
   }
   busStop(-8, 20.9 + 0.5, 0); busStop(8, -20.9 - 0.5, Math.PI);
@@ -656,5 +656,41 @@ export function createCity({ rand }) {
   trunks.castShadow = leaves.castShadow = true; leaves.receiveShadow = true;
   group.add(trunks, leaves);
 
-  return { group, colliders };
+  // =============== 当たり判定・地面の高さ（見えている全ての物体から自動で作る）===============
+  // キャラ（身長 0.74）が触れる物は全て塞ぐ。段差 STEP 以下の低い物は乗り越える地面として扱う。
+  //   solids  : 立体の当たり判定。箱は向きつき（OBB）、円柱は円
+  //   patches : 歩ける地面の高さ（歩道・芝・園路・広場など）
+  const solids = [], patches = [];
+  const STEP = 0.3, BODY = 0.74;
+  group.updateMatrixWorld(true);
+  const inst = new THREE.Matrix4(), w4 = new THREE.Matrix4(), tmp = new THREE.Vector3(), sc = new THREE.Vector3(), qq = new THREE.Quaternion(), ps = new THREE.Vector3();
+  const eul = new THREE.Euler();
+  group.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.geometry, type = g.type;
+    if (type === 'IcosahedronGeometry' || type === 'TorusGeometry' || type === 'PlaneGeometry' || type === 'CircleGeometry' || type === 'RingGeometry' || type === 'ExtrudeGeometry') return; // 枝葉・輪・看板の板・屋根は当たらない（屋根は頭上）
+    g.computeBoundingBox();
+    const n = o.isInstancedMesh ? o.count : 1;
+    for (let k = 0; k < n; k++) {
+      w4.copy(o.matrixWorld);
+      if (o.isInstancedMesh) { o.getMatrixAt(k, inst); w4.multiply(inst); }
+      w4.decompose(ps, qq, sc);
+      eul.setFromQuaternion(qq, 'YXZ');
+      const bb = g.boundingBox, hx = (bb.max.x - bb.min.x) / 2 * sc.x, hy = (bb.max.y - bb.min.y) / 2 * sc.y, hz = (bb.max.z - bb.min.z) / 2 * sc.z;
+      tmp.set((bb.max.x + bb.min.x) / 2, (bb.max.y + bb.min.y) / 2, (bb.max.z + bb.min.z) / 2).applyMatrix4(w4);
+      const tilted = Math.abs(eul.x) > 0.05 || Math.abs(eul.z) > 0.05;
+      const rx = tilted ? Math.abs(Math.cos(eul.y)) * hx + Math.abs(Math.sin(eul.y)) * hz : hx, rz = tilted ? Math.abs(Math.sin(eul.y)) * hx + Math.abs(Math.cos(eul.y)) * hz : hz;
+      const top = tmp.y + hy * (tilted ? 1.6 : 1), low = tmp.y - hy * (tilted ? 1.6 : 1);
+      if (low >= BODY) continue;                  // 頭より上にある物（看板・ひさし・屋根・街灯の灯り）は通り抜けられる
+      if (hx * hz < 1e-5 && type === 'BoxGeometry') continue;
+      if (top <= STEP) {                          // 低い物 = 乗り越える地面
+        if (top > 0.02) patches.push(type === 'CylinderGeometry' ? { disc: true, x: tmp.x, z: tmp.z, r: hx, top } : { x: tmp.x, z: tmp.z, hx: rx, hz: rz, rot: tilted ? 0 : eul.y, top });
+        continue;
+      }
+      if (type === 'CylinderGeometry') solids.push({ circle: true, x: tmp.x, z: tmp.z, r: Math.max(hx, 0.07), height: top });
+      else solids.push({ x: tmp.x, z: tmp.z, hx: Math.max(rx, 0.05), hz: Math.max(rz, 0.05), rot: tilted ? 0 : eul.y, height: top });
+    }
+  });
+
+  return { group, colliders, solids, patches };
 }
